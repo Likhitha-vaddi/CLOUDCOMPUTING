@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud Attendance System</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --green: #22c55e; --green-dark: #16a34a; --green-light: #bbf7d0; --bg: #f0fdf4; --card: #ffffff; --text: #14532d; --muted: #6b7280; --border: #d1fae5; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 16px; }
+  header { text-align: center; margin-bottom: 36px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: var(--green-light); color: var(--green-dark); font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 100px; margin-bottom: 14px; }
+  h1 { font-family: 'Syne', sans-serif; font-size: 40px; font-weight: 800; color: var(--text); }
+  h1 span { color: var(--green); }
+  .subtitle { color: var(--muted); font-size: 15px; margin-top: 8px; }
+  .card { background: var(--card); border-radius: 24px; box-shadow: 0 4px 24px rgba(34,197,94,0.10); border: 1px solid var(--border); padding: 36px; width: 100%; max-width: 520px; }
+  .card-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+  .icon { width: 36px; height: 36px; background: var(--green-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .form-group { margin-bottom: 18px; }
+  label { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 7px; }
+  input, select { width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; color: #1f2937; background: #f8fafc; outline: none; }
+  input:focus, select:focus { border-color: var(--green); background: #fff; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .btn { width: 100%; padding: 14px; background: var(--green); color: white; border: none; border-radius: 12px; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+  .btn:hover { background: var(--green-dark); }
+  .btn:disabled { background: #9ca3af; cursor: not-allowed; }
+  .msg { display: none; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 500; margin-top: 16px; text-align: center; }
+  .msg.success { display: block; background: #dcfce7; color: #15803d; }
+  .msg.error { display: block; background: #fee2e2; color: #b91c1c; }
+  .records-card { background: var(--card); border-radius: 24px; box-shadow: 0 4px 24px rgba(34,197,94,0.10); border: 1px solid var(--border); padding: 36px; width: 100%; max-width: 520px; margin-top: 24px; }
+  .records-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; max-height: 280px; overflow-y: auto; }
+  .record-item { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+  .record-name { font-weight: 600; color: var(--text); }
+  .record-detail { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .status-badge { padding: 4px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .status-present { background: #dcfce7; color: #15803d; }
+  .status-absent { background: #fee2e2; color: #b91c1c; }
+  .status-late { background: #fef9c3; color: #854d0e; }
+  .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 20px 0; }
+  footer { margin-top: 32px; color: var(--muted); font-size: 12px; text-align: center; }
+  footer span { color: var(--green); font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <div class="badge">☁️ Supabase Cloud</div>
+  <h1>Attendance <span>System</span></h1>
+  <p class="subtitle">Automate record-keeping for your organization</p>
+</header>
+<div class="card">
+  <div class="card-title"><div class="icon">📋</div>Mark Attendance</div>
+  <div class="form-group"><label>Full Name</label><input type="text" id="name" placeholder="Enter full name" /></div>
+  <div class="form-group"><label>Employee / Roll ID</label><input type="text" id="emp_id" placeholder="Enter ID" /></div>
+  <div class="form-group"><label>Date</label><input type="date" id="date" /></div>
+  <div class="row">
+    <div class="form-group"><label>Check-In Time</label><input type="time" id="checkin" /></div>
+    <div class="form-group"><label>Check-Out Time</label><input type="time" id="checkout" /></div>
+  </div>
+  <div class="form-group">
+    <label>Status</label>
+    <select id="status">
+      <option value="">-- Select Status --</option>
+      <option value="Present">✅ Present</option>
+      <option value="Absent">❌ Absent</option>
+      <option value="Late">⏰ Late</option>
+    </select>
+  </div>
+  <button class="btn" id="submitBtn" onclick="submitAttendance()">☁️ Save to Supabase Cloud</button>
+  <div class="msg" id="msg"></div>
+</div>
+<div class="records-card">
+  <div class="card-title"><div class="icon">📊</div>Recent Records</div>
+  <div class="records-list" id="recordsList">
+    <div class="empty">No records yet. Mark attendance above!</div>
+  </div>
+</div>
+<footer>Data stored on <span>Supabase Cloud ☁️</span></footer>
+<script>
+  const SUPABASE_URL = 'https://cxrylhwmjnwelmfbdgll.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4cnlsaHdtam53ZWxtZmJkZ2xsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzY0NTUsImV4cCI6MjA5NDk1MjQ1NX0.jDkhHjua1Jc-Eag-71Nco2-ci3Hc_b3fe0cbXG2AXNk';
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  document.getElementById('date').valueAsDate = new Date();
+  const now = new Date();
+  document.getElementById('checkin').value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  async function submitAttendance() {
+    const name = document.getElementById('name').value.trim();
+    const employee_id = document.getElementById('emp_id').value.trim();
+    const date = document.getElementById('date').value;
+    const checkin_time = document.getElementById('checkin').value;
+    const checkout_time = document.getElementById('checkout').value;
+    const status = document.getElementById('status').value;
+    const btn = document.getElementById('submitBtn');
+    const msg = document.getElementById('msg');
+
+    if (!name || !employee_id || !date || !checkin_time || !status) {
+      msg.className = 'msg error';
+      msg.textContent = '⚠️ Please fill in all required fields!';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Saving to Cloud...';
+
+    const { error } = await client.from('Attendance').insert([
+      { name, employee_id, date, checkin_time, checkout_time, status }
+    ]);
+
+    if (error) {
+      msg.className = 'msg error';
+      msg.textContent = '❌ Error: ' + error.message;
+    } else {
+      msg.className = 'msg success';
+      msg.textContent = '✅ Attendance saved to Supabase Cloud successfully!';
+      loadRecords();
+      document.getElementById('name').value = '';
+      document.getElementById('emp_id').value = '';
+      document.getElementById('status').value = '';
+      document.getElementById('checkout').value = '';
+    }
+    btn.disabled = false;
+    btn.textContent = '☁️ Save to Supabase Cloud';
+  }
+
+  async function loadRecords() {
+    const { data, error } = await client.from('Attendance').select('*').order('date', { ascending: false }).limit(10);
+    const list = document.getElementById('recordsList');
+    if (error || !data || data.length === 0) {
+      list.innerHTML = '<div class="empty">No records yet. Mark attendance above!</div>';
+      return;
+    }
+    list.innerHTML = data.map(r => `
+      <div class="record-item">
+        <div>
+          <div class="record-name">${r.name}</div>
+          <div class="record-detail">ID: ${r.employee_id} | ${r.date} | ${r.checkin_time}${r.checkout_time ? ' – ' + r.checkout_time : ''}</div>
+        </div>
+        <span class="status-badge status-${r.status.toLowerCase()}">${r.status}</span>
+      </div>
+    `).join('');
+  }
+
+  loadRecords();
+</script>
+</body>
+</html>
